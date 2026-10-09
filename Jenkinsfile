@@ -7,13 +7,15 @@ pipeline {
         DOCKERHUB_USERNAME = 'velanjs27'
         BACKEND_IMAGE = "${DOCKERHUB_USERNAME}/employee_backend:v1"
         FRONTEND_IMAGE = "${DOCKERHUB_USERNAME}/employee_frontend:v1"
+        FRONTEND_API_URL = 'http://localhost:8083/api/employees'
+        DOCKER_NETWORK = 'employee_management_system_ems-network'
     }
 
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                  url: 'https://github.com/velan27/Employee_management_system.git'
+                    url: 'https://github.com/velan27/Employee_management_system.git'
             }
         }
 
@@ -25,19 +27,12 @@ pipeline {
             }
         }
 
-        stage('Build Frontend') {
-            steps {
-                dir('ems-frontend') {
-                    sh 'npm ci'
-                    sh 'npm run build'
-                }
-            }
-        }
+     
 
         stage('Docker Build') {
             steps {
                 sh 'docker build -t $BACKEND_IMAGE ./ems-backend'
-                sh 'docker build -t $FRONTEND_IMAGE ./ems-frontend'
+                sh 'docker build --build-arg VITE_API_BASE_URL=$FRONTEND_API_URL -t $FRONTEND_IMAGE ./ems-frontend'
             }
         }
 
@@ -52,6 +47,28 @@ pipeline {
                     sh 'docker push $BACKEND_IMAGE'
                     sh 'docker push $FRONTEND_IMAGE'
                 }
+            }
+        }
+
+        stage('Deploy Test Containers') {
+            steps {
+                sh '''
+                    docker pull "$BACKEND_IMAGE"
+                    docker pull "$FRONTEND_IMAGE"
+
+                    docker rm -f employee-backend-jenkins-test employee-frontend-jenkins-test 2>/dev/null || true
+
+                    docker run -d \
+                      --name employee-backend-jenkins-test \
+                      --network "$DOCKER_NETWORK" \
+                      -p 8087:8082 \
+                      "$BACKEND_IMAGE"
+
+                    docker run -d \
+                      --name employee-frontend-jenkins-test \
+                      -p 8088:80 \
+                      "$FRONTEND_IMAGE"
+                '''
             }
         }
     }
