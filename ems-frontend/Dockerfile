@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
-RUN npm install --frozen-lockfile
+RUN npm ci
 
 # Copy the rest of the project files
 COPY . .
@@ -23,7 +23,7 @@ RUN rm -rf ./*
 COPY --from=build /app/dist .
 
 # Expose the port used by Nginx
-EXPOSE 3000
+EXPOSE 80
 
 # Start Nginx
 CMD ["nginx", "-g", "daemon off;"]

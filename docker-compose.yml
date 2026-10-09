@@ -12,6 +12,9 @@ services:
       - ems-network
 
   backend:
+    build:
+      context: ./ems-backend
+      dockerfile: Dockerfile
     image: employee_backend:v1
     container_name: employee-backend
     restart: unless-stopped
@@ -23,11 +26,16 @@ services:
       - ems-network
 
   frontend:
+    build:
+      context: ./ems-frontend
+      dockerfile: Dockerfile
     image: employee_frontend:v1
     container_name: employee-frontend
     restart: unless-stopped
     ports:
       - "8085:80"
+    depends_on:
+      - backend
     networks:
       - ems-network
 

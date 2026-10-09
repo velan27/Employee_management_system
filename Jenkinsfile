@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -27,7 +28,7 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 dir('ems-frontend') {
-                    sh 'npm install'
+                    sh 'npm ci'
                     sh 'npm run build'
                 }
             }
@@ -40,36 +41,25 @@ pipeline {
             }
         }
 
-        stage('Docker Login & Push') {
+        stage('Docker Hub Login & Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "$DOCKERHUB_CREDENTIALS", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                     sh 'docker push $BACKEND_IMAGE'
                     sh 'docker push $FRONTEND_IMAGE'
                 }
             }
         }
+    }
 
-        stage('Deploy') {
-            steps {
-                sh '''
-                docker network create employee-network || true
-
-                docker network connect employee-network ems-mysql || true
-
-                docker rm -f backend || true
-                docker rm -f frontend || true
-
-                docker run -d --name backend \
-                  --network employee-network \
-                  -p 8082:8082 \
-                  $BACKEND_IMAGE
-
-                docker run -d --name frontend \
-                  -p 3001:80 \
-                  $FRONTEND_IMAGE
-                '''
-            }
+    post {
+        always {
+            sh 'docker logout || true'
         }
     }
 }
+
